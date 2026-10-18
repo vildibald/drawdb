@@ -11,7 +11,7 @@ const defaultSettings = {
   mode: "light",
   autosave: true,
   showCardinality: true,
-  notation: "default",
+  notation: "crows_foot",
   showRelationshipLabels: true,
   showDebugCoordinates: false,
   showComments: false,
