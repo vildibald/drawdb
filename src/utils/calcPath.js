@@ -33,7 +33,8 @@ export function calcPath(r, zoom = 1, showComments = true) {
     ) +
     tableHeaderHeight +
     getCommentHeight(r.startTable.comment, startTableWidth, showComments) +
-    tableFieldHeight / 2;
+    tableFieldHeight / 2 +
+    (r.startOffset ?? 0) * zoom;
   let x2 = r.endTable.x;
   let y2 =
     r.endTable.y +
@@ -45,10 +46,11 @@ export function calcPath(r, zoom = 1, showComments = true) {
     ) +
     getCommentHeight(r.endTable.comment, endTableWidth, showComments) +
     tableHeaderHeight +
-    tableFieldHeight / 2;
+    tableFieldHeight / 2 +
+    (r.endOffset ?? 0) * zoom;
 
   let radius = 10 * zoom;
-  const midX = (x2 + x1 + startWidth) / 2;
+  const midX = (x2 + x1 + startWidth) / 2 + (r.routeOffset ?? 0) * zoom;
   const endX = x2 + endWidth < x1 ? x2 + endWidth : x2;
 
   if (Math.abs(y1 - y2) <= 36 * zoom) {
@@ -163,11 +165,15 @@ export function calcCompositePath(r, zoom = 1, showComments = true) {
     getFieldOffsetY(table.fields ?? [], index, tableWidth, showComments) +
     tableFieldHeight / 2;
 
-  const startYs = r.startFieldIndices.map((i) =>
-    anchorY(r.startTable, i, startTableWidth),
+  const startYs = r.startFieldIndices.map(
+    (i, pairIndex) =>
+      anchorY(r.startTable, i, startTableWidth) +
+      (r.startFieldOffsets?.[pairIndex] ?? 0) * zoom,
   );
-  const endYs = r.endFieldIndices.map((i) =>
-    anchorY(r.endTable, i, endTableWidth),
+  const endYs = r.endFieldIndices.map(
+    (i, pairIndex) =>
+      anchorY(r.endTable, i, endTableWidth) +
+      (r.endFieldOffsets?.[pairIndex] ?? 0) * zoom,
   );
 
   // Connect each table on the edge facing the other table.
@@ -177,7 +183,7 @@ export function calcCompositePath(r, zoom = 1, showComments = true) {
   const startX = startIsLeft ? r.startTable.x + startWidth : r.startTable.x;
   const endX = startIsLeft ? r.endTable.x : r.endTable.x + endWidth;
   const dir = startIsLeft ? 1 : -1;
-  const fork = 24 * zoom;
+  const fork = (24 + (r.routeOffset ?? 0)) * zoom;
   const mergeStartX = startX + dir * fork;
   const mergeEndX = endX - dir * fork;
 

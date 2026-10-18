@@ -35,6 +35,7 @@ export default memo(function Relationship({
   startTable,
   endTable,
   relationships,
+  offsets,
 }) {
   const { layout } = useLayout();
   const { selectedElement, setSelectedElement } = useSelect();
@@ -62,6 +63,7 @@ export default memo(function Relationship({
         startTable={startTable}
         endTable={endTable}
         relationships={relationships}
+        offsets={offsets}
         onEdit={edit}
       />
       <SideSheet
@@ -95,6 +97,7 @@ const RelationshipPath = memo(function RelationshipPath({
   endTable,
   relationships,
   onEdit,
+  offsets,
 }) {
   const { settings } = useSettings();
   const { t } = useTranslation();
@@ -109,6 +112,13 @@ const RelationshipPath = memo(function RelationshipPath({
     const pairs = getRelationshipFields(data);
 
     return {
+      ...offsets,
+      startOffset: offsets?.startFieldOffsets[0] ?? 0,
+      endOffset: offsets?.endFieldOffsets[0] ?? 0,
+      routeOffset:
+        offsets?.endFieldOffsets.find((offset) => offset !== 0) ??
+        offsets?.startFieldOffsets.find((offset) => offset !== 0) ??
+        0,
       startFieldIndex: getVisibleFieldIndex(
         startTable,
         data.startFieldId,
@@ -140,7 +150,7 @@ const RelationshipPath = memo(function RelationshipPath({
         fields: endFields,
       },
     };
-  }, [startTable, endTable, relationships, data]);
+  }, [startTable, endTable, relationships, data, offsets]);
 
   const crowsFoot = settings.notation === "crows_foot";
   const inferred = inferRelationshipCardinality(
@@ -152,16 +162,7 @@ const RelationshipPath = memo(function RelationshipPath({
 
   const composite = useMemo(() => {
     if (!pathValues || !isComposite) return null;
-    return calcCompositePath(
-      {
-        startTable: pathValues.startTable,
-        endTable: pathValues.endTable,
-        startFieldIndices: pathValues.startFieldIndices,
-        endFieldIndices: pathValues.endFieldIndices,
-      },
-      1,
-      settings.showComments,
-    );
+    return calcCompositePath(pathValues, 1, settings.showComments);
   }, [pathValues, isComposite, settings.showComments]);
 
   const d = useMemo(() => {

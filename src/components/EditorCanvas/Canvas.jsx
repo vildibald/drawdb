@@ -10,6 +10,7 @@ import {
   gridCircleRadius,
   minAreaSize,
   defaultRelationshipColor,
+  tableFieldHeight,
 } from "../../data/constants";
 import { Toast } from "@douyinfe/semi-ui";
 import Table from "./Table";
@@ -37,7 +38,9 @@ import {
   areFieldsCompatible,
   getTableHeight,
   getTableWidth,
+  getRelationshipFields,
 } from "../../utils/utils";
+import { getRelationshipOffsets } from "../../utils/relationshipOffsets";
 import {
   getViewHeight,
   getViewWidth,
@@ -151,6 +154,24 @@ export default function Canvas() {
   const tablesById = useMemo(
     () => new Map(tables.map((table) => [table.id, table])),
     [tables],
+  );
+
+  const relationshipOffsets = useMemo(
+    () =>
+      getRelationshipOffsets(
+        relationships
+          .filter((relationship) => {
+            const start = tablesById.get(relationship.startTableId);
+            const end = tablesById.get(relationship.endTableId);
+            return start && end && !start.hidden && !end.hidden;
+          })
+          .map((relationship) => ({
+            ...relationship,
+            fields: getRelationshipFields(relationship),
+          })),
+        tableFieldHeight,
+      ),
+    [relationships, tablesById],
   );
 
   const selectedTableIds = useMemo(() => {
@@ -849,6 +870,7 @@ export default function Canvas() {
               startTable={tablesById.get(e.startTableId)}
               endTable={tablesById.get(e.endTableId)}
               relationships={relationships}
+              offsets={relationshipOffsets.get(e.id)}
             />
           ))}
           {tables.map((table) => (
