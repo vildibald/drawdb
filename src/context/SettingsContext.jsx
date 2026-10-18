@@ -11,6 +11,7 @@ const defaultSettings = {
   mode: "light",
   autosave: true,
   showCardinality: true,
+  notation: "default",
   showRelationshipLabels: true,
   showDebugCoordinates: false,
   showComments: false,

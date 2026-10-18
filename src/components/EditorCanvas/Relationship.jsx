@@ -7,7 +7,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { Cardinality, ObjectType, Tab } from "../../data/constants";
+import {
+  Cardinality,
+  ObjectType,
+  Tab,
+  darkBgTheme,
+} from "../../data/constants";
 import { calcPath, calcCompositePath } from "../../utils/calcPath";
 import { useSettings, useLayout, useSelect } from "../../hooks";
 import { useTranslation } from "react-i18next";
@@ -19,6 +24,8 @@ import {
   getRelationshipFields,
   getTableWidth,
 } from "../../utils/utils";
+
+import { inferRelationshipCardinality } from "../../utils/relationshipCardinality";
 
 const labelFontSize = 16;
 const cardinalityOffset = 28;
@@ -135,6 +142,12 @@ const RelationshipPath = memo(function RelationshipPath({
     };
   }, [startTable, endTable, relationships, data]);
 
+  const crowsFoot = settings.notation === "crows_foot";
+  const inferred = inferRelationshipCardinality(
+    startTable,
+    getRelationshipFields(data).map((pair) => pair.startFieldId),
+  );
+
   const isComposite = (pathValues?.startFieldIndices?.length ?? 0) > 1;
 
   const composite = useMemo(() => {
@@ -185,7 +198,42 @@ const RelationshipPath = memo(function RelationshipPath({
       endPoint = path.getPointAtLength(pathLength - cardinalityOffset);
     }
 
+    const path = pathRef.current;
+    const length = path.getTotalLength();
+    const startTip = composite
+      ? composite.startCardinality
+      : path.getPointAtLength(0);
+    const endTip = composite
+      ? composite.endCardinality
+      : path.getPointAtLength(length);
+    const direction = (tip, inside, table) =>
+      composite
+        ? tip.x > table.x + getTableWidth(table) / 2
+          ? 1
+          : -1
+        : inside.x >= tip.x
+          ? 1
+          : -1;
+
     setAnchors({
+      startTip: {
+        x: startTip.x,
+        y: startTip.y,
+        direction: direction(
+          startTip,
+          path.getPointAtLength(Math.min(1, length)),
+          pathValues.startTable,
+        ),
+      },
+      endTip: {
+        x: endTip.x,
+        y: endTip.y,
+        direction: direction(
+          endTip,
+          path.getPointAtLength(Math.max(0, length - 1)),
+          pathValues.endTable,
+        ),
+      },
       label: {
         x: labelPoint.x - labelWidth / 2,
         y: labelPoint.y + labelHeight / 2,
@@ -193,7 +241,7 @@ const RelationshipPath = memo(function RelationshipPath({
       start: { x: startPoint.x, y: startPoint.y },
       end: { x: endPoint.x, y: endPoint.y },
     });
-  }, [d, composite, data.name, settings.showRelationshipLabels]);
+  }, [d, composite, pathValues, data.name, settings.showRelationshipLabels]);
 
   let cardinalityStart = "1";
   let cardinalityEnd = "1";
@@ -257,7 +305,23 @@ const RelationshipPath = memo(function RelationshipPath({
           {data.name}
         </text>
       )}
-      {anchors && settings.showCardinality && (
+      {anchors && settings.showCardinality && crowsFoot && (
+        <>
+          <CrowsFoot
+            anchor={anchors.startTip}
+            cardinality={inferred.start}
+            color={data.color}
+            mode={settings.mode}
+          />
+          <CrowsFoot
+            anchor={anchors.endTip}
+            cardinality={inferred.end}
+            color={data.color}
+            mode={settings.mode}
+          />
+        </>
+      )}
+      {anchors && settings.showCardinality && !crowsFoot && (
         <>
           <CardinalityLabel
             x={anchors.start.x}
@@ -311,6 +375,35 @@ function CardinalityLabel({ x, y, text, color, r = 12, padding = 14 }) {
       >
         {text}
       </text>
+    </g>
+  );
+}
+
+function CrowsFoot({ anchor, cardinality, color, mode }) {
+  return (
+    <g
+      transform={`translate(${anchor.x} ${anchor.y}) scale(${anchor.direction} 1)`}
+      stroke={color ?? "grey"}
+      strokeWidth={1.5}
+      fill="none"
+      className="group-hover:stroke-sky-600"
+      pointerEvents="none"
+    >
+      {cardinality.max === "many" ? (
+        <path d="M 0 -7 L 14 0 L 0 7" />
+      ) : (
+        <path d="M 7 -7 V 7" />
+      )}
+      {cardinality.min === 0 ? (
+        <circle
+          cx={21}
+          cy={0}
+          r={4}
+          fill={mode === "dark" ? darkBgTheme : "white"}
+        />
+      ) : (
+        <path d="M 17 -7 V 7" />
+      )}
     </g>
   );
 }

@@ -1855,6 +1855,21 @@ export default function ControlPanel({
         ),
         function: snapToGrid,
       },
+      notation: {
+        children: [
+          {
+            name: t("default_notation"),
+            function: () =>
+              setSettings((prev) => ({ ...prev, notation: "default" })),
+          },
+          {
+            name: t("crows_foot"),
+            function: () =>
+              setSettings((prev) => ({ ...prev, notation: "crows_foot" })),
+          },
+        ],
+        function: () => {},
+      },
       show_cardinality: {
         state: settings.showCardinality ? (
           <i className="bi bi-toggle-on" />
