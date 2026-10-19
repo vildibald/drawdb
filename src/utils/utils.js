@@ -150,9 +150,18 @@ export function getCommentHeight(
   return height;
 }
 
-export function getFieldHeight(field, containerWidth, showComments = true) {
+export function getFieldContentHeight(field, fieldHeights) {
+  return fieldHeights?.get(field?.id) ?? tableFieldHeight;
+}
+
+export function getFieldHeight(
+  field,
+  containerWidth,
+  showComments = true,
+  fieldHeights,
+) {
   return (
-    tableFieldHeight +
+    getFieldContentHeight(field, fieldHeights) +
     FIELD_BORDER_WIDTH +
     getCommentHeight(
       field?.comment,
@@ -232,10 +241,11 @@ export function getFieldsTotalHeight(
   fields,
   containerWidth,
   showComments = true,
+  fieldHeights,
 ) {
   let total = 0;
   for (const f of fields) {
-    total += getFieldHeight(f, containerWidth, showComments);
+    total += getFieldHeight(f, containerWidth, showComments, fieldHeights);
   }
   return total;
 }
@@ -245,21 +255,32 @@ export function getFieldOffsetY(
   fieldIndex,
   containerWidth,
   showComments = true,
+  fieldHeights,
 ) {
   let total = 0;
   const limit = Math.min(fieldIndex, fields.length);
   for (let i = 0; i < limit; i++) {
-    total += getFieldHeight(fields[i], containerWidth, showComments);
+    total += getFieldHeight(
+      fields[i],
+      containerWidth,
+      showComments,
+      fieldHeights,
+    );
   }
   return total;
 }
 
-export function getTableHeight(table, showComments = true, relationships = []) {
+export function getTableHeight(
+  table,
+  showComments = true,
+  relationships = [],
+  fieldHeights,
+) {
   const width = getTableWidth(table);
   const visibleFields = getVisibleFields(table, relationships);
 
   return (
-    getFieldsTotalHeight(visibleFields, width, showComments) +
+    getFieldsTotalHeight(visibleFields, width, showComments, fieldHeights) +
     tableHeaderHeight +
     tableColorStripHeight +
     getCommentHeight(table.comment, width, showComments)

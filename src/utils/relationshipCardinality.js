@@ -1,3 +1,18 @@
+/** An identifying FK is wholly included in the referencing table's primary key.
+ * UNIQUE and NOT NULL constraints do not establish identifying relationships.
+ */
+export function isIdentifyingRelationship(table, fieldIds) {
+  return (
+    fieldIds.length > 0 &&
+    fieldIds.every((id) => {
+      const field =
+        table?.fields?.find((candidate) => candidate.id === id) ??
+        table?.fields?.[id];
+      return field?.primary === true;
+    })
+  );
+}
+
 /** Infer endpoint cardinalities from the referencing table's SQL constraints.
  * A foreign key never requires the referenced row to have any children.
  */

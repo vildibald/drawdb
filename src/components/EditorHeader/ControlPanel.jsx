@@ -164,6 +164,7 @@ export default function ControlPanel({
     updateRelationship,
     database,
     sqlHeader,
+    relationshipLayout,
   } = useDiagram();
   const { enums, setEnums, deleteEnum, addEnum, updateEnum } = useEnums();
   const { types, addType, deleteType, updateType, setTypes } = useTypes();
@@ -696,7 +697,13 @@ export default function ControlPanel({
       minMaxXY.maxX = Math.max(minMaxXY.maxX, table.x + getTableWidth(table));
       minMaxXY.maxY = Math.max(
         minMaxXY.maxY,
-        table.y + getTableHeight(table, settings.showComments, relationships),
+        table.y +
+          getTableHeight(
+            table,
+            settings.showComments,
+            relationships,
+            relationshipLayout.fieldHeights.get(table.id),
+          ),
       );
     });
 
@@ -751,7 +758,12 @@ export default function ControlPanel({
     }));
   };
   const autoArrangeTables = () => {
-    const positions = autoArrange(tables, relationships, settings);
+    const positions = autoArrange(
+      tables,
+      relationships,
+      settings,
+      relationshipLayout.fieldHeights,
+    );
     const positionById = new Map(positions.map((p) => [p.id, p]));
 
     const elements = [];

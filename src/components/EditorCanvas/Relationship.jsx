@@ -25,7 +25,10 @@ import {
   getTableWidth,
 } from "../../utils/utils";
 
-import { inferRelationshipCardinality } from "../../utils/relationshipCardinality";
+import {
+  inferRelationshipCardinality,
+  isIdentifyingRelationship,
+} from "../../utils/relationshipCardinality";
 
 const labelFontSize = 16;
 const cardinalityOffset = 28;
@@ -36,6 +39,8 @@ export default memo(function Relationship({
   endTable,
   relationships,
   offsets,
+  startFieldHeights,
+  endFieldHeights,
 }) {
   const { layout } = useLayout();
   const { selectedElement, setSelectedElement } = useSelect();
@@ -64,6 +69,8 @@ export default memo(function Relationship({
         endTable={endTable}
         relationships={relationships}
         offsets={offsets}
+        startFieldHeights={startFieldHeights}
+        endFieldHeights={endFieldHeights}
         onEdit={edit}
       />
       <SideSheet
@@ -98,6 +105,8 @@ const RelationshipPath = memo(function RelationshipPath({
   relationships,
   onEdit,
   offsets,
+  startFieldHeights,
+  endFieldHeights,
 }) {
   const { settings } = useSettings();
   const { t } = useTranslation();
@@ -141,6 +150,7 @@ const RelationshipPath = memo(function RelationshipPath({
         width: getTableWidth(startTable),
         comment: startTable.comment,
         fields: startFields,
+        fieldHeights: startFieldHeights,
       },
       endTable: {
         x: endTable.x,
@@ -148,11 +158,24 @@ const RelationshipPath = memo(function RelationshipPath({
         width: getTableWidth(endTable),
         comment: endTable.comment,
         fields: endFields,
+        fieldHeights: endFieldHeights,
       },
     };
-  }, [startTable, endTable, relationships, data, offsets]);
+  }, [
+    startTable,
+    endTable,
+    relationships,
+    data,
+    offsets,
+    startFieldHeights,
+    endFieldHeights,
+  ]);
 
   const crowsFoot = settings.notation === "crows_foot";
+  const identifying = isIdentifyingRelationship(
+    startTable,
+    getRelationshipFields(data).map((pair) => pair.startFieldId),
+  );
   const inferred = inferRelationshipCardinality(
     startTable,
     getRelationshipFields(data).map((pair) => pair.startFieldId),
@@ -289,6 +312,8 @@ const RelationshipPath = memo(function RelationshipPath({
         ref={pathRef}
         d={d}
         className="relationship-path"
+        data-identifying={identifying}
+        strokeDasharray={identifying ? undefined : "8 5"}
         style={{ stroke: hovered ? undefined : data.color }}
         fill="none"
         cursor="pointer"

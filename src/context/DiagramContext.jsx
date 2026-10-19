@@ -1,10 +1,17 @@
 import { createContext, useCallback, useMemo, useRef, useState } from "react";
-import { Action, DB, ObjectType, defaultBlue } from "../data/constants";
+import {
+  Action,
+  DB,
+  ObjectType,
+  defaultBlue,
+  tableFieldHeight,
+} from "../data/constants";
 import { useTransform, useUndoRedo, useSelect, useCollab } from "../hooks";
 import { Toast } from "@douyinfe/semi-ui";
 import { useTranslation } from "react-i18next";
 import { nanoid } from "nanoid";
-import { getRelationshipFields } from "../utils/utils";
+import { getRelationshipLayout } from "../utils/relationshipOffsets";
+import { getRelationshipFields, getTableWidth } from "../utils/utils";
 import { cascadePosition } from "../utils/rect";
 
 export const DiagramContext = createContext(null);
@@ -359,6 +366,16 @@ export default function DiagramContextProvider({ children }) {
     [setDatabase, setSqlHeader],
   );
 
+  const relationshipLayout = useMemo(
+    () =>
+      getRelationshipLayout(
+        relationships,
+        tables.map((table) => ({ ...table, width: getTableWidth(table) })),
+        tableFieldHeight,
+      ),
+    [relationships, tables],
+  );
+
   const value = useMemo(
     () => ({
       ...actions,
@@ -368,8 +385,9 @@ export default function DiagramContextProvider({ children }) {
       sqlHeader,
       tablesCount: tables.length,
       relationshipsCount: relationships.length,
+      relationshipLayout,
     }),
-    [actions, tables, relationships, database, sqlHeader],
+    [actions, tables, relationships, database, sqlHeader, relationshipLayout],
   );
 
   return (

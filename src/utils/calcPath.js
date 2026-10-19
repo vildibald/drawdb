@@ -1,5 +1,10 @@
-import { tableFieldHeight, tableHeaderHeight } from "../data/constants";
-import { getCommentHeight, getFieldOffsetY, getTableWidth } from "./utils";
+import { tableHeaderHeight } from "../data/constants";
+import {
+  getCommentHeight,
+  getFieldOffsetY,
+  getTableWidth,
+  getFieldContentHeight,
+} from "./utils";
 
 /**
  * Generates an SVG path string to visually represent a relationship between two fields.
@@ -30,10 +35,15 @@ export function calcPath(r, zoom = 1, showComments = true) {
       r.startFieldIndex,
       startTableWidth,
       showComments,
+      r.startTable.fieldHeights,
     ) +
     tableHeaderHeight +
     getCommentHeight(r.startTable.comment, startTableWidth, showComments) +
-    tableFieldHeight / 2 +
+    getFieldContentHeight(
+      r.startTable.fields?.[r.startFieldIndex],
+      r.startTable.fieldHeights,
+    ) /
+      2 +
     (r.startOffset ?? 0) * zoom;
   let x2 = r.endTable.x;
   let y2 =
@@ -43,11 +53,30 @@ export function calcPath(r, zoom = 1, showComments = true) {
       r.endFieldIndex,
       endTableWidth,
       showComments,
+      r.endTable.fieldHeights,
     ) +
     getCommentHeight(r.endTable.comment, endTableWidth, showComments) +
     tableHeaderHeight +
-    tableFieldHeight / 2 +
+    getFieldContentHeight(
+      r.endTable.fields?.[r.endFieldIndex],
+      r.endTable.fieldHeights,
+    ) /
+      2 +
     (r.endOffset ?? 0) * zoom;
+
+  if (r.startSide !== undefined && r.endSide !== undefined) {
+    const sx = x1 + (r.startSide > 0 ? startWidth : 0);
+    const ex = x2 + (r.endSide > 0 ? endWidth : 0);
+    const lane = (r.routeOffset ?? 0) * zoom;
+    const clearance = (30 + (r.routePadding ?? 0)) * zoom;
+    const mx =
+      r.startSide === r.endSide
+        ? r.startSide > 0
+          ? Math.max(sx, ex) + clearance + lane
+          : Math.min(sx, ex) - clearance - lane
+        : (sx + ex) / 2 + lane;
+    return roundedTrunk(sx, y1, ex, y2, mx, zoom);
+  }
 
   let radius = 10 * zoom;
   const midX = (x2 + x1 + startWidth) / 2 + (r.routeOffset ?? 0) * zoom;
@@ -162,8 +191,14 @@ export function calcCompositePath(r, zoom = 1, showComments = true) {
     table.y +
     tableHeaderHeight +
     getCommentHeight(table.comment, tableWidth, showComments) +
-    getFieldOffsetY(table.fields ?? [], index, tableWidth, showComments) +
-    tableFieldHeight / 2;
+    getFieldOffsetY(
+      table.fields ?? [],
+      index,
+      tableWidth,
+      showComments,
+      table.fieldHeights,
+    ) +
+    getFieldContentHeight(table.fields?.[index], table.fieldHeights) / 2;
 
   const startYs = r.startFieldIndices.map(
     (i, pairIndex) =>
@@ -180,12 +215,13 @@ export function calcCompositePath(r, zoom = 1, showComments = true) {
   const startCenter = r.startTable.x + startWidth / 2;
   const endCenter = r.endTable.x + endWidth / 2;
   const startIsLeft = startCenter <= endCenter;
-  const startX = startIsLeft ? r.startTable.x + startWidth : r.startTable.x;
-  const endX = startIsLeft ? r.endTable.x : r.endTable.x + endWidth;
-  const dir = startIsLeft ? 1 : -1;
-  const fork = (24 + (r.routeOffset ?? 0)) * zoom;
-  const mergeStartX = startX + dir * fork;
-  const mergeEndX = endX - dir * fork;
+  const startSide = r.startSide ?? (startIsLeft ? 1 : -1);
+  const endSide = r.endSide ?? -startSide;
+  const startX = r.startTable.x + (startSide > 0 ? startWidth : 0);
+  const endX = r.endTable.x + (endSide > 0 ? endWidth : 0);
+  const fork = (24 + (r.routePadding ?? 0) + (r.routeOffset ?? 0)) * zoom;
+  const mergeStartX = startX + startSide * fork;
+  const mergeEndX = endX + endSide * fork;
 
   const minS = Math.min(...startYs);
   const maxS = Math.max(...startYs);
@@ -193,7 +229,12 @@ export function calcCompositePath(r, zoom = 1, showComments = true) {
   const maxE = Math.max(...endYs);
   const trunkStartY = (minS + maxS) / 2;
   const trunkEndY = (minE + maxE) / 2;
-  const midX = (mergeStartX + mergeEndX) / 2;
+  const midX =
+    startSide === endSide
+      ? startSide > 0
+        ? Math.max(mergeStartX, mergeEndX) + 30 * zoom
+        : Math.min(mergeStartX, mergeEndX) - 30 * zoom
+      : (mergeStartX + mergeEndX) / 2;
 
   const radius = 10 * zoom;
 
@@ -215,30 +256,15 @@ export function calcCompositePath(r, zoom = 1, showComments = true) {
     return `M ${fromX} ${fromY} L ${cornerX - dx * r} ${fromY} Q ${cornerX} ${fromY} ${cornerX} ${fromY + dy * r} L ${cornerX} ${toY}`;
   };
 
-  // The trunk: a rounded orthogonal connector between the two collectors.
-  const trunk = (sx, sy, ex, ey) => {
-    if (Math.abs(sy - ey) < 0.5) {
-      return `M ${sx} ${sy} L ${ex} ${ey}`;
-    }
-    const mx = (sx + ex) / 2;
-    const dxs = Math.sign(mx - sx);
-    const dxe = Math.sign(ex - mx);
-    const dy = Math.sign(ey - sy);
-    const r = Math.min(
-      radius,
-      Math.abs(ey - sy) / 2,
-      Math.abs(mx - sx) || radius,
-    );
-    return `M ${sx} ${sy} L ${mx - dxs * r} ${sy} Q ${mx} ${sy} ${mx} ${sy + dy * r} L ${mx} ${ey - dy * r} Q ${mx} ${ey} ${mx + dxe * r} ${ey} L ${ex} ${ey}`;
-  };
-
   const segs = [];
   // Each start column forks into the trunk.
   startYs.forEach((y) =>
     segs.push(branch(startX, y, mergeStartX, trunkStartY)),
   );
   // Single trunk between the two collectors.
-  segs.push(trunk(mergeStartX, trunkStartY, mergeEndX, trunkEndY));
+  segs.push(
+    roundedTrunk(mergeStartX, trunkStartY, mergeEndX, trunkEndY, midX, zoom),
+  );
   // Each end column forks out of the trunk.
   endYs.forEach((y) => segs.push(branch(endX, y, mergeEndX, trunkEndY)));
 
@@ -248,4 +274,30 @@ export function calcCompositePath(r, zoom = 1, showComments = true) {
     startCardinality: { x: mergeStartX, y: trunkStartY },
     endCardinality: { x: mergeEndX, y: trunkEndY },
   };
+}
+
+// Rounded orthogonal connector. The same construction works for opposing edges,
+// outer-edge loops and coincident/self-referencing fields.
+function roundedTrunk(sx, sy, ex, ey, mx, zoom) {
+  if (
+    Math.abs(sy - ey) < 0.5 &&
+    mx >= Math.min(sx, ex) &&
+    mx <= Math.max(sx, ex)
+  ) {
+    return `M ${sx} ${sy} L ${ex} ${ey}`;
+  }
+  // A self-reference needs a loop even when both ends share a row centre.
+  if (Math.abs(sx - ex) < 0.5 && Math.abs(sy - ey) < 0.5) {
+    return `M ${sx} ${sy} H ${mx} V ${sy - 20 * zoom} H ${ex} V ${ey}`;
+  }
+  const dy = Math.sign(ey - sy);
+  const dxs = Math.sign(mx - sx);
+  const dxe = Math.sign(ex - mx);
+  const radius = Math.min(
+    10 * zoom,
+    Math.abs(ey - sy) / 2,
+    Math.abs(mx - sx),
+    Math.abs(ex - mx),
+  );
+  return `M ${sx} ${sy} L ${mx - dxs * radius} ${sy} Q ${mx} ${sy} ${mx} ${sy + dy * radius} L ${mx} ${ey - dy * radius} Q ${mx} ${ey} ${mx + dxe * radius} ${ey} L ${ex} ${ey}`;
 }

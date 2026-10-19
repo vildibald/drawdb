@@ -44,6 +44,7 @@ import i18n from "../../i18n/i18n";
 import {
   getCommentHeight,
   getFieldOffsetY,
+  getFieldContentHeight,
   getTableHeight,
   getTableWidth,
   getVisibleFieldEntries,
@@ -54,6 +55,7 @@ import ResizeHandles from "./ResizeHandles";
 
 export default memo(function Table({
   tableData,
+  fieldHeights,
   isSelected,
   zoom,
   database,
@@ -87,6 +89,7 @@ export default memo(function Table({
     tableData,
     settings.showComments,
     relationships,
+    fieldHeights,
   );
 
   const visibleFieldEntries = useMemo(
@@ -470,7 +473,10 @@ export default memo(function Table({
           e.target.releasePointerCapture(e.pointerId);
         }}
       >
-        <div className="h-[36px] px-2 py-1 flex justify-between items-center gap-1">
+        <div
+          style={{ height: getFieldContentHeight(fieldData, fieldHeights) }}
+          className="px-2 py-1 flex justify-between items-center gap-1"
+        >
           <div
             className={`${
               hoveredField === index ? "text-zinc-400" : ""
@@ -489,6 +495,7 @@ export default memo(function Table({
                     index,
                     width,
                     settings.showComments,
+                    fieldHeights,
                   ) +
                   tableHeaderHeight +
                   tableColorStripHeight +
@@ -497,7 +504,8 @@ export default memo(function Table({
                     width,
                     settings.showComments,
                   ) +
-                  14;
+                  getFieldContentHeight(fieldData, fieldHeights) / 2 -
+                  4;
                 setLinkingLine((prev) => ({
                   ...prev,
                   startFieldId: fieldData.id,

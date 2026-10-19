@@ -1,9 +1,51 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { inferRelationshipCardinality } from "./relationshipCardinality.js";
+import {
+  inferRelationshipCardinality,
+  isIdentifyingRelationship,
+} from "./relationshipCardinality.js";
 
 const infer = (fields, ids, indices = []) =>
   inferRelationshipCardinality({ fields, indices }, ids);
+
+test("identifying FKs can be all or a subset of the child primary key", () => {
+  const table = {
+    fields: [
+      { id: "owner", primary: true },
+      { id: "number", primary: true },
+    ],
+  };
+  assert.equal(isIdentifyingRelationship(table, ["owner"]), true);
+  assert.equal(isIdentifyingRelationship(table, ["owner", "number"]), true);
+});
+
+test("every column of a composite FK must belong to the child primary key", () => {
+  const table = {
+    fields: [
+      { id: "a", primary: true },
+      { id: "b", unique: true, notNull: true },
+    ],
+  };
+  assert.equal(isIdentifyingRelationship(table, ["a", "b"]), false);
+  assert.equal(isIdentifyingRelationship(table, ["b"]), false);
+});
+
+test("unique constraints do not make FKs identifying", () => {
+  const table = {
+    fields: [{ id: "owner", name: "owner", unique: true, notNull: true }],
+    indices: [{ unique: true, fields: ["owner"] }],
+    uniqueConstraints: [{ fields: ["owner"] }],
+  };
+  assert.equal(isIdentifyingRelationship(table, ["owner"]), false);
+});
+
+test("missing FK columns are non-identifying; legacy field indexes are supported", () => {
+  const table = { fields: [{ id: "owner", primary: true }] };
+  assert.equal(isIdentifyingRelationship(table, []), false);
+  assert.equal(isIdentifyingRelationship(table, ["missing"]), false);
+  assert.equal(isIdentifyingRelationship(undefined, ["owner"]), false);
+  assert.equal(isIdentifyingRelationship(table, [0]), true);
+});
 
 test("nullable and mandatory foreign keys", () => {
   assert.deepEqual(infer([{ id: 1 }], [1]), {

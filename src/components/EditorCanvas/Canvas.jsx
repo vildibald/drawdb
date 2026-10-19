@@ -10,7 +10,6 @@ import {
   gridCircleRadius,
   minAreaSize,
   defaultRelationshipColor,
-  tableFieldHeight,
 } from "../../data/constants";
 import { Toast } from "@douyinfe/semi-ui";
 import Table from "./Table";
@@ -38,9 +37,7 @@ import {
   areFieldsCompatible,
   getTableHeight,
   getTableWidth,
-  getRelationshipFields,
 } from "../../utils/utils";
-import { getRelationshipOffsets } from "../../utils/relationshipOffsets";
 import {
   getViewHeight,
   getViewWidth,
@@ -66,8 +63,14 @@ export default function Canvas() {
     pointer,
   } = canvasContextValue;
 
-  const { tables, updateTable, relationships, addRelationship, database } =
-    useDiagram();
+  const {
+    tables,
+    updateTable,
+    relationships,
+    addRelationship,
+    database,
+    relationshipLayout,
+  } = useDiagram();
   const { setSaveState } = useSaveState();
   const { areas, updateArea } = useAreas();
   const { views, updateView } = useViews();
@@ -156,24 +159,6 @@ export default function Canvas() {
     [tables],
   );
 
-  const relationshipOffsets = useMemo(
-    () =>
-      getRelationshipOffsets(
-        relationships
-          .filter((relationship) => {
-            const start = tablesById.get(relationship.startTableId);
-            const end = tablesById.get(relationship.endTableId);
-            return start && end && !start.hidden && !end.hidden;
-          })
-          .map((relationship) => ({
-            ...relationship,
-            fields: getRelationshipFields(relationship),
-          })),
-        tableFieldHeight,
-      ),
-    [relationships, tablesById],
-  );
-
   const selectedTableIds = useMemo(() => {
     const ids = new Set(
       bulkSelectedElements
@@ -217,7 +202,12 @@ export default function Canvas() {
         x: table.x,
         y: table.y,
         width: getTableWidth(table),
-        height: getTableHeight(table, settings.showComments, relationships),
+        height: getTableHeight(
+          table,
+          settings.showComments,
+          relationships,
+          relationshipLayout.fieldHeights.get(table.id),
+        ),
       };
       if (shouldAddElement(tableRect, element)) {
         elements.push(element);
@@ -870,13 +860,20 @@ export default function Canvas() {
               startTable={tablesById.get(e.startTableId)}
               endTable={tablesById.get(e.endTableId)}
               relationships={relationships}
-              offsets={relationshipOffsets.get(e.id)}
+              offsets={relationshipLayout.offsets.get(e.id)}
+              startFieldHeights={relationshipLayout.fieldHeights.get(
+                e.startTableId,
+              )}
+              endFieldHeights={relationshipLayout.fieldHeights.get(
+                e.endTableId,
+              )}
             />
           ))}
           {tables.map((table) => (
             <Table
               key={table.id}
               tableData={table}
+              fieldHeights={relationshipLayout.fieldHeights.get(table.id)}
               isSelected={selectedTableIds.has(table.id)}
               zoom={transform.zoom}
               database={database}

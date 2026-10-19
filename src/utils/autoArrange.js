@@ -6,7 +6,7 @@ const nodeSep = 60;
 const rankSep = 110;
 const isolatedGap = 60;
 
-export function autoArrange(tables, relationships, settings) {
+export function autoArrange(tables, relationships, settings, fieldHeights) {
   const movable = tables.filter((table) => !table.locked);
   const movableIds = new Set(movable.map((table) => table.id));
 
@@ -24,7 +24,12 @@ export function autoArrange(tables, relationships, settings) {
 
   const sizeOf = (table) => ({
     width: getTableWidth(table),
-    height: getTableHeight(table, settings.showComments, relationships),
+    height: getTableHeight(
+      table,
+      settings.showComments,
+      relationships,
+      fieldHeights?.get(table.id),
+    ),
   });
 
   const connected = movable.filter((table) => connectedIds.has(table.id));
