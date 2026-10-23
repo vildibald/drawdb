@@ -907,6 +907,9 @@ export default function ControlPanel({
       case ObjectType.VIEW:
         deleteView(selectedElement.id);
         break;
+      case ObjectType.RELATIONSHIP:
+        deleteRelationship(selectedElement.id);
+        break;
       default:
         break;
     }

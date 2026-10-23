@@ -43,8 +43,31 @@ export default memo(function Relationship({
   endFieldHeights,
 }) {
   const { layout } = useLayout();
-  const { selectedElement, setSelectedElement } = useSelect();
+  const { selectedElement, setSelectedElement, setBulkSelectedElements } =
+    useSelect();
   const { t } = useTranslation();
+
+  const select = useCallback(
+    (e) => {
+      if (!e.isPrimary || e.button !== 0) return;
+      if (selectedElement.open && !layout.sidebar) return;
+      e.stopPropagation();
+      setBulkSelectedElements([]);
+      setSelectedElement((prev) => ({
+        ...prev,
+        element: ObjectType.RELATIONSHIP,
+        id: data.id,
+        open: false,
+      }));
+    },
+    [
+      data.id,
+      layout.sidebar,
+      selectedElement.open,
+      setBulkSelectedElements,
+      setSelectedElement,
+    ],
+  );
 
   const edit = useCallback(() => {
     setSelectedElement((prev) => ({
@@ -72,6 +95,11 @@ export default memo(function Relationship({
         startFieldHeights={startFieldHeights}
         endFieldHeights={endFieldHeights}
         onEdit={edit}
+        onSelect={select}
+        isSelected={
+          selectedElement.element === ObjectType.RELATIONSHIP &&
+          selectedElement.id === data.id
+        }
       />
       <SideSheet
         title={t("edit")}
@@ -104,6 +132,8 @@ const RelationshipPath = memo(function RelationshipPath({
   endTable,
   relationships,
   onEdit,
+  onSelect,
+  isSelected,
   offsets,
   startFieldHeights,
   endFieldHeights,
@@ -296,6 +326,7 @@ const RelationshipPath = memo(function RelationshipPath({
   return (
     <g
       className="select-none group"
+      onPointerDown={onSelect}
       onDoubleClick={onEdit}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
@@ -312,9 +343,10 @@ const RelationshipPath = memo(function RelationshipPath({
         ref={pathRef}
         d={d}
         className="relationship-path"
+        data-selected={isSelected}
         data-identifying={identifying}
         strokeDasharray={identifying ? undefined : "8 5"}
-        style={{ stroke: hovered ? undefined : data.color }}
+        style={{ stroke: hovered || isSelected ? undefined : data.color }}
         fill="none"
         cursor="pointer"
       />
