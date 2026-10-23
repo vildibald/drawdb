@@ -70,12 +70,16 @@ export default function DiagramContextProvider({ children }) {
       fields: [
         {
           name: "id",
-          type: database === DB.GENERIC ? "INT" : "INTEGER",
+          // SQLite INTEGER is 64-bit; Oracle INTEGER supports large integers.
+          type:
+            database === DB.SQLITE || database === DB.ORACLESQL
+              ? "INTEGER"
+              : "BIGINT",
           default: "",
           check: "",
           primary: true,
           unique: false,
-          unsigned: true,
+          unsigned: false,
           notNull: true,
           increment: true,
           comment: "",
